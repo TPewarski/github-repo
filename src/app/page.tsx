@@ -3,6 +3,8 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { useCallback, useState } from "react";
 import { SortDirection, Sort, Type, Repository } from "./types";
 import { RepoTable } from "./RepoTable";
+import { set } from "date-fns";
+import { on } from "events";
 
 const GITHUB_API = "https://api.github.com";
 
@@ -19,9 +21,9 @@ const getGithubURL = (
   inputType: INPUT_TYPE,
   name: string,
   page: number = 1,
+  sort: Sort = Sort.FULL_NAME,
   sortDirection: SortDirection = SortDirection.ASC,
-  type: Type = Type.ALL,
-  sort: Sort = Sort.FULL_NAME
+  type: Type = Type.ALL
 ): string =>
   `${GITHUB_API}/${
     inputType === INPUT_TYPE.ORGANIZATION ? "orgs" : "users"
@@ -35,6 +37,9 @@ export default function Home() {
   const [formError, setFormError] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [sortField, setSortField] = useState<Sort>(Sort.FULL_NAME);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    SortDirection.ASC
+  );
 
   const { register, handleSubmit } = useForm<Inputs>();
 
@@ -44,18 +49,31 @@ export default function Home() {
     );
   };
 
-  const onSubmit: SubmitHandler<Inputs> = (data) => {
-    setIsFetching(true);
-    setFormError(null);
-    try {
-      fetch(getGithubURL(inputType, data.name, 1))
-        .then((data) => data.json())
-        .then((repos) => setRepos(repos));
-    } catch (error) {
-      setFormError(`Error fetching repos: ${error}`);
-      console.error(error);
-    }
-    setIsFetching(false);
+  const onSubmit: SubmitHandler<Inputs> = useCallback(
+    (data) => {
+      console.log("onSubmit", data);
+      setIsFetching(true);
+      setFormError(null);
+      try {
+        fetch(getGithubURL(inputType, data.name, 1, sortField, sortDirection))
+          .then((data) => data.json())
+          .then((repos) => setRepos(repos));
+      } catch (error) {
+        setFormError(`Error fetching repos: ${error}`);
+        console.error(error);
+      }
+      setIsFetching(false);
+    },
+    [sortField, sortDirection, inputType]
+  );
+
+  const onSortChange = (col: Sort) => {
+    console.log("onSortChange", col);
+    setSortDirection((prev) =>
+      prev === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC
+    );
+    setSortField(col);
+    handleSubmit(onSubmit)();
   };
 
   return (
@@ -114,7 +132,9 @@ export default function Home() {
         </button>
         {formError && <span className="text-red-500">{formError}</span>}
       </form>
-      {repos.length && <RepoTable repos={repos} />}
+      {repos.length && (
+        <RepoTable repos={repos} handleSortChange={onSortChange} />
+      )}
     </main>
   );
 }

@@ -1,8 +1,9 @@
-import { Repository } from "./types";
+import { Repository, Sort } from "./types";
 import { format, parseISO } from "date-fns";
 
 interface RepoTableProps {
   repos: Repository[];
+  handleSortChange: (sortField: Sort) => void;
 }
 export const RepoTable = (props: RepoTableProps) => {
   return (
@@ -11,7 +12,8 @@ export const RepoTable = (props: RepoTableProps) => {
         <tr className="flex flex-col flex-no wrap md:table-row">
           <th
             scope="col"
-            className="px-6 py-3 md:border-none border-b border-dashed"
+            className="hover:cursor-pointer px-6 py-3 md:border-none border-b border-dashed"
+            onClick={() => props.handleSortChange(Sort.FULL_NAME)}
           >
             Name
           </th>
@@ -23,17 +25,23 @@ export const RepoTable = (props: RepoTableProps) => {
           </th>
           <th
             scope="col"
-            className="px-6 py-3 md:border-none border-b border-dashed"
+            className="hover:cursor-pointer px-6 py-3 md:border-none border-b border-dashed"
+            onClick={() => props.handleSortChange(Sort.CREATED)}
           >
             Created
           </th>
           <th
             scope="col"
-            className="px-6 py-3 md:border-none border-b border-dashed"
+            className="hover:cursor-pointer px-6 py-3 md:border-none border-b border-dashed"
+            onClick={() => props.handleSortChange(Sort.UPDATED)}
           >
             Updated
           </th>
-          <th scope="col" className="px-6 py-3">
+          <th
+            scope="col"
+            className="hover:cursor-pointer px-6 py-3"
+            onClick={() => props.handleSortChange(Sort.PUSHED)}
+          >
             Pushed
           </th>
         </tr>
