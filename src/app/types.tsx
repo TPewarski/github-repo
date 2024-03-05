@@ -27,3 +27,8 @@ export type Repository = {
   updated_at: string;
   pushed_at: string;
 };
+
+export enum RequestType {
+  USER = "user",
+  ORGANIZATION = "organization",
+}

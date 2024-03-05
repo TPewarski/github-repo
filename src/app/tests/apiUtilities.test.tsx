@@ -1,5 +1,5 @@
 import { test, expect } from "@jest/globals";
-import { getGithubURL, getPageCount } from "../page";
+import { getGithubURL, getPageCount } from "../utilities/apiUtilities";
 
 test("Generating user api url", () => {
   const url = getGithubURL("user", "test", 1, "name", "asc");

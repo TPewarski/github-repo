@@ -1,54 +1,21 @@
 "use client";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useCallback, useState, useEffect } from "react";
-import { SortDirection, Sort, Type, Repository } from "./types";
+import { SortDirection, Sort, Repository, RequestType } from "./types";
 import { RepoTable } from "./RepoTable";
 import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
-import { set } from "date-fns";
-
-const GITHUB_API = "https://api.github.com";
+import { getGithubURL, getPageCount } from "./utilities/apiUtilities";
 
 type Inputs = {
   name: string;
 };
 
-enum InputType {
-  USER = "user",
-  ORGANIZATION = "organization",
-}
-
-export const getGithubURL = (
-  inputType: InputType,
-  name: string,
-  page: number = 1,
-  sort: Sort = Sort.FULL_NAME,
-  sortDirection: SortDirection = SortDirection.ASC,
-  type: Type = Type.ALL
-): string =>
-  `${GITHUB_API}/${
-    inputType === InputType.ORGANIZATION ? "orgs" : "users"
-  }/${name}/repos?per_page=10&page=${page}&sort=${sort}&direction=${sortDirection}&type=${type}`;
-
-export const getPageCount = (linkHeader: string | null): number | null => {
-  // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
-  // get last link url
-  const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
-  const url = linkHeader && linkHeader.match(lastPattern)?.[0];
-  //match the page count
-  const pagePattern = /(&page=)(\d+)/i;
-  const match = url && url.match(pagePattern);
-
-  if (match) {
-    const [, , pageCount] = match;
-    return parseInt(pageCount);
-  }
-  return null;
-};
-
 export default function Home() {
   const [isFetching, setIsFetching] = useState(false);
-  const [inputType, setInputType] = useState<InputType>(InputType.ORGANIZATION);
+  const [requestType, setRequestType] = useState<RequestType>(
+    RequestType.ORGANIZATION
+  );
   const [formError, setFormError] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [sortField, setSortField] = useState<Sort>(Sort.FULL_NAME);
@@ -60,12 +27,15 @@ export default function Home() {
   const [pageCount, setPageCount] = useState(1);
 
   const { register, handleSubmit, reset } = useForm<Inputs>();
+
+  //refetch repositories with new sort order or page
   useEffect(() => {
     if (repos.length) {
       handleSubmit(onSubmit)();
     }
   }, [sortField, sortDirection, page]);
 
+  //extract page count from link header
   useEffect(() => {
     if (linkHeader) {
       const pageCount = getPageCount(linkHeader);
@@ -75,9 +45,9 @@ export default function Home() {
     }
   }, [linkHeader]);
 
-  const onInputTypeChange = () => {
-    setInputType((prev: InputType) =>
-      prev === InputType.USER ? InputType.ORGANIZATION : InputType.USER
+  const onRequestTypeChange = () => {
+    setRequestType((prev: RequestType) =>
+      prev === RequestType.USER ? RequestType.ORGANIZATION : RequestType.USER
     );
     reset();
   };
@@ -87,22 +57,28 @@ export default function Home() {
       setIsFetching(true);
       setFormError(null);
       try {
+        // NextJS automatically cache's fetch requests
         const resp = await fetch(
-          getGithubURL(inputType, data.name, page, sortField, sortDirection)
+          getGithubURL(requestType, data.name, page, sortField, sortDirection)
         );
 
+        if (!resp.ok) {
+          throw new Error(`Error fetching repos: ${resp.statusText}`);
+        }
+
+        // page count comes from link header
         const linkHeader = resp.headers.get("link");
         setLinkHeader(linkHeader);
 
         const repositories = await resp.json();
         setRepos(repositories);
-        setIsFetching(false);
       } catch (error) {
-        setFormError(`Error fetching repos: ${error}`);
+        setFormError(`Request Error: ${error}`);
         console.error(error);
       }
+      setIsFetching(false);
     },
-    [sortField, sortDirection, inputType, page]
+    [sortField, sortDirection, requestType, page]
   );
 
   const onSortChange = (col: Sort) => {
@@ -131,22 +107,22 @@ export default function Home() {
           <button
             type="button"
             className={`w-36 mr-12 mb-12 ${
-              inputType === InputType.ORGANIZATION
+              requestType === RequestType.ORGANIZATION
                 ? "bg-blue-500 hover:bg-blue-700 border-blue-700"
                 : "bg-gray-500 hover:bg-gray-700 border-gray-700"
             } bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 border border-blue-700 rounded`}
-            onClick={onInputTypeChange}
+            onClick={onRequestTypeChange}
           >
             Organization
           </button>
           <button
             type="button"
             className={`w-36 mr-12 mb-12 ${
-              inputType === InputType.USER
+              requestType === RequestType.USER
                 ? "bg-blue-500 hover:bg-blue-700 border-blue-700"
                 : "bg-gray-500 hover:bg-gray-700 border-gray-700"
             } text-white font-bold py-2 px-4 border  rounded`}
-            onClick={onInputTypeChange}
+            onClick={onRequestTypeChange}
           >
             USER
           </button>
@@ -155,14 +131,14 @@ export default function Home() {
           htmlFor="organization"
           className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
         >
-          {inputType === InputType.ORGANIZATION ? "Organization" : "User"}
+          {requestType === RequestType.ORGANIZATION ? "Organization" : "User"}
         </label>
         <input
           type="text"
           id="name"
           className="mb-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full min-w-80 md:w-1/2 p-2.5"
           placeholder={`Enter a github ${
-            inputType === InputType.ORGANIZATION ? "organization" : "user"
+            requestType === RequestType.ORGANIZATION ? "organization" : "user"
           }`}
           {...register("name")}
         />
