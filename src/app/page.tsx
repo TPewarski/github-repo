@@ -51,11 +51,14 @@ export default function Home() {
   }, [sortField, sortDirection, page]);
 
   useEffect(() => {
-    console.log("linkHeader", linkHeader);
     if (linkHeader) {
+      // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
+      // get last link url
+      const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
+      const url = linkHeader && linkHeader.match(lastPattern)?.[0];
+      //match the page count
       const pagePattern = /(&page=)(\d+)/i;
-      const match = linkHeader.match(pagePattern);
-      console.log("match", match);
+      const match = url && url.match(pagePattern);
 
       if (match) {
         const [, , pageCount] = match;
@@ -72,31 +75,20 @@ export default function Home() {
   };
 
   const onSubmit: SubmitHandler<Inputs> = useCallback(
-    (data) => {
-      console.log("onSubmit", {
-        data,
-        url: getGithubURL(inputType, data.name, page, sortField, sortDirection),
-      });
+    async (data) => {
       setIsFetching(true);
       setFormError(null);
       try {
-        fetch(
+        const resp = await fetch(
           getGithubURL(inputType, data.name, page, sortField, sortDirection)
-        )
-          .then((resp) => {
-            // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
-            const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
-            const linkHeader = resp.headers.get("link");
-            const url = linkHeader && linkHeader.match(lastPattern)?.[0];
-            console.log("url", url);
-            if (url) {
-              setLinkHeader(url);
-            }
-            return resp;
-          })
-          .then((resp) => resp.json())
-          .then((repos) => setRepos(repos))
-          .then(() => setIsFetching(false));
+        );
+
+        const linkHeader = resp.headers.get("link");
+        setLinkHeader(linkHeader);
+
+        const repositories = await resp.json();
+        setRepos(repositories);
+        setIsFetching(false);
       } catch (error) {
         setFormError(`Error fetching repos: ${error}`);
         console.error(error);
