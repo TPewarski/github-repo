@@ -23,7 +23,7 @@ export type Repository = {
   id: number;
   name: string;
   description: string;
-  created: string;
-  updated: string;
-  pushed: string;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
 };
