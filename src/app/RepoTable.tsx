@@ -8,6 +8,7 @@ interface RepoTableProps {
   handleSortChange: (sortField: Sort) => void;
   handlePageChange: (event: React.ChangeEvent<unknown>, page: number) => void;
   page: number;
+  count: number;
 }
 
 export const RepoTable = (props: RepoTableProps) => {
@@ -80,11 +81,12 @@ export const RepoTable = (props: RepoTableProps) => {
 
       <Stack spacing={2}>
         <Pagination
-          count={10}
+          count={props.count}
           variant="outlined"
           shape="rounded"
           onChange={props.handlePageChange}
           page={props.page}
+          boundaryCount={2}
         />
       </Stack>
     </>

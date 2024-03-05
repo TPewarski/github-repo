@@ -36,10 +36,12 @@ export default function Home() {
   const [formError, setFormError] = useState<string | null>(null);
   const [repos, setRepos] = useState<Repository[]>([]);
   const [sortField, setSortField] = useState<Sort>(Sort.FULL_NAME);
+  const [linkHeader, setLinkHeader] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     SortDirection.ASC
   );
   const [page, setPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
 
   const { register, handleSubmit, reset } = useForm<Inputs>();
   useEffect(() => {
@@ -47,6 +49,20 @@ export default function Home() {
       handleSubmit(onSubmit)();
     }
   }, [sortField, sortDirection, page]);
+
+  useEffect(() => {
+    console.log("linkHeader", linkHeader);
+    if (linkHeader) {
+      const pagePattern = /(&page=)(\d+)/i;
+      const match = linkHeader.match(pagePattern);
+      console.log("match", match);
+
+      if (match) {
+        const [, , pageCount] = match;
+        setPageCount(parseInt(pageCount));
+      }
+    }
+  }, [linkHeader]);
 
   const onInputTypeChange = () => {
     setInputType((prev: InputType) =>
@@ -67,7 +83,18 @@ export default function Home() {
         fetch(
           getGithubURL(inputType, data.name, page, sortField, sortDirection)
         )
-          .then((data) => data.json())
+          .then((resp) => {
+            // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
+            const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
+            const linkHeader = resp.headers.get("link");
+            const url = linkHeader && linkHeader.match(lastPattern)?.[0];
+            console.log("url", url);
+            if (url) {
+              setLinkHeader(url);
+            }
+            return resp;
+          })
+          .then((resp) => resp.json())
           .then((repos) => setRepos(repos))
           .then(() => setIsFetching(false));
       } catch (error) {
@@ -157,6 +184,7 @@ export default function Home() {
           handleSortChange={onSortChange}
           handlePageChange={onChangePage}
           page={page}
+          count={pageCount}
         />
       ) : null}
     </main>
