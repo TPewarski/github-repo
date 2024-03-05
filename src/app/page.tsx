@@ -18,7 +18,7 @@ enum InputType {
   ORGANIZATION = "organization",
 }
 
-const getGithubURL = (
+export const getGithubURL = (
   inputType: InputType,
   name: string,
   page: number = 1,
@@ -29,6 +29,22 @@ const getGithubURL = (
   `${GITHUB_API}/${
     inputType === InputType.ORGANIZATION ? "orgs" : "users"
   }/${name}/repos?per_page=10&page=${page}&sort=${sort}&direction=${sortDirection}&type=${type}`;
+
+export const getPageCount = (linkHeader: string | null): number | null => {
+  // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
+  // get last link url
+  const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
+  const url = linkHeader && linkHeader.match(lastPattern)?.[0];
+  //match the page count
+  const pagePattern = /(&page=)(\d+)/i;
+  const match = url && url.match(pagePattern);
+
+  if (match) {
+    const [, , pageCount] = match;
+    return parseInt(pageCount);
+  }
+  return null;
+};
 
 export default function Home() {
   const [isFetching, setIsFetching] = useState(false);
@@ -52,17 +68,9 @@ export default function Home() {
 
   useEffect(() => {
     if (linkHeader) {
-      // github link header: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28#using-link-headers
-      // get last link url
-      const lastPattern = /(?<=<)([\S]*)(?=>; rel="Last")/i;
-      const url = linkHeader && linkHeader.match(lastPattern)?.[0];
-      //match the page count
-      const pagePattern = /(&page=)(\d+)/i;
-      const match = url && url.match(pagePattern);
-
-      if (match) {
-        const [, , pageCount] = match;
-        setPageCount(parseInt(pageCount));
+      const pageCount = getPageCount(linkHeader);
+      if (pageCount) {
+        setPageCount(pageCount);
       }
     }
   }, [linkHeader]);

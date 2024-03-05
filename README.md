@@ -1,3 +1,11 @@
+TODO
+Test
+Tailwind
+Next data caching
+Error handling
+text validation for input? could be numberrs in a username
+turn the input into a separate component?
+
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
